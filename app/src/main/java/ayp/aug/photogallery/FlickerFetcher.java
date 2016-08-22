@@ -1,51 +1,49 @@
 package ayp.aug.photogallery;
 
 import android.net.Uri;
-import android.nfc.Tag;
 import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
+import java.util.Calendar;
 import java.util.List;
 
 /**
  * Created by Hattapong on 8/16/2016.
  */
 public class FlickerFetcher {
+    private static final String TAG = "FlickrFetcher";
 
 
-    private static final String API_KEY = "fe0747112241e00aa98555e88e1b8e1c";
-    private static final String FLICKR_URL = "https://api.flickr.com/services/rest/";
-    private static final String TAG = "FlickerFetcher";
-
+    /**
+     * get <b>data</b> from web service(<b>urlSpec</b>)
+     * @param urlSpec url target(<b>String</b>)
+     * @return data (<b>bytes</b>)
+     * @throws IOException
+     */
     public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
-
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             InputStream in = connection.getInputStream();
 
-            //if connnection is not OK throw new IOException
+            //if connection is not OK throw new IOException
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 throw new IOException(connection.getResponseMessage() + ":with " + urlSpec);
             }
-            int bytesRead = 0;
+            int byteRead = 0;
             byte[] buffer = new byte[2048];
-
-            while ((bytesRead = in.read(buffer)) > 0) {
-                out.write(buffer, 0, bytesRead);
+            while ((byteRead = in.read(buffer)) > 0) {
+                out.write(buffer, 0, byteRead);
             }
-
             out.close();
             return out.toByteArray();
         } finally {
@@ -53,57 +51,127 @@ public class FlickerFetcher {
         }
     }
 
+    /**
+     * transfer bytes to String
+     * @param urlSpec url target(<b>String</b>)
+     * @return data(<b>String</b>)
+     * @throws IOException
+     */
     public String getUrlString(String urlSpec) throws IOException {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public String fetchItem() throws IOException {
-        String jsonString = null;
-        String url = Uri.parse(FLICKR_URL).buildUpon()
-                .appendQueryParameter("method", "flickr.photos.getRecent")
-                .appendQueryParameter("api_key", API_KEY)
-                .appendQueryParameter("format", "json")
-                .appendQueryParameter("nojsoncallback", "1")
-                .appendQueryParameter("extras", "url_s")
-                .build().toString();
+    //
+    private static final String FLICK_URL = "https://api.flickr.com/services/rest/";
+    private static final String API_KEY = "0eae29c79033fd52e932785bed5353a6";
 
-        jsonString = getUrlString(url);
+    private static final String METHOD_GET_RECENT = "flickr.photos.getRecent";
+    private static final String METHOD_SEARCH = "flickr.photos.search";
+
+
+    /**
+     * build <b>URL</b> and add parameter
+     * @param method kind of search <b>getPhotos</b> or <b>search</b>
+     * @param param parameter of <b>URL</b>
+     * @return URL (<b>String</b>)
+     * @throws IOException
+     */
+    private String buildUri(String method,String ... param) throws IOException {
+        Uri baseUrl = Uri.parse(FLICK_URL);
+        Uri.Builder builder = baseUrl.buildUpon();
+        builder.appendQueryParameter("method", method);
+        builder.appendQueryParameter("api_key", API_KEY);
+        builder.appendQueryParameter("format", "json");
+        builder.appendQueryParameter("nojsoncallback", "1");
+        builder.appendQueryParameter("extras", "url_s");
+        //equals without case (insensitive).
+        if(METHOD_SEARCH.equalsIgnoreCase(method)){
+            builder.appendQueryParameter("text",param[0]);
+        }
+
+        Uri completeUrl = builder.build();
+        String url = completeUrl.toString();
+
+        Log.i(TAG,"Run URL: "+ url);
+
+        return url;
+    }
+
+    /**
+     * Query <b>data</b> from URL
+     * @param url url target
+     * @return data (<b>String</b>)
+     * @throws IOException
+     */
+    private String queryItem(String url) throws IOException{
+        Log.i(TAG,"Run URL: "+ url);
+        String jsonString = getUrlString(url);
+        Log.i(TAG, "Receive JSON " + jsonString);
 
         return jsonString;
     }
 
-    public void fetchItems(List<GalleryItem> items) {
+    /**
+     * Search photo then put into <b>items</b>
+     * @param items array target
+     * @param key to search
+     */
+    public void searchPhotos(List<GalleryItem> items,String key) {
         try {
-            String jsonStr = fetchItem();
+            String url = buildUri(METHOD_SEARCH,key);
+            String jsonStr = queryItem(url);
             if (jsonStr != null) {
                 parseJSON(items, jsonStr);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            Log.e(TAG, "Failed ti fetch items ", e);
+            Log.e(TAG, "Failed to fetchItems ", e);
         }
     }
 
+    /**
+     * call method that get <b>RecentPhoto</b> in list
+     * @param items target list
+     */
+    public void getRecentPhotos(List<GalleryItem> items) {
+        try {
+            String url = buildUri(METHOD_GET_RECENT);
+            String jsonStr = queryItem(url);
+            if (jsonStr != null) {
+                parseJSON(items, jsonStr);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(TAG, "Failed to fetchItems ", e);
+        }
+    }
+
+    /**
+     * add Photo from URL target in List
+     * @param newGalleryItemList target List
+     * @param jsonBodyStr URL target
+     * @throws IOException
+     * @throws JSONException
+     */
     private void parseJSON(List<GalleryItem> newGalleryItemList, String jsonBodyStr) throws IOException, JSONException {
         JSONObject jsonBody = new JSONObject(jsonBodyStr);
         JSONObject photosJson = jsonBody.getJSONObject("photos");
         JSONArray photoListJson = photosJson.getJSONArray("photo");
 
+//        JSONArray photoListJson = new JSONObject(jsonBodyStr).getJSONObject("photos").getJSONArray("photo");
+
         for (int i = 0; i < photoListJson.length(); i++) {
             JSONObject jsonPhotoItem = photoListJson.getJSONObject(i);
-
             GalleryItem item = new GalleryItem();
-
             item.setId(jsonPhotoItem.getString("id"));
             item.setTitle(jsonPhotoItem.getString("title"));
-
             if (!jsonPhotoItem.has("url_s")) {
                 continue;
             }
 
             item.setUrl(jsonPhotoItem.getString("url_s"));
-
             newGalleryItemList.add(item);
         }
     }
+
 }
