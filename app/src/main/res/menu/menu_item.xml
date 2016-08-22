@@ -17,4 +17,9 @@
         android:icon="@drawable/ic_action_name"
         android:title="@string/reload"
         app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/mnu_toggle_pollling"
+        android:title="@string/start_polling"
+        app:showAsAction="never"/>
 </menu>
