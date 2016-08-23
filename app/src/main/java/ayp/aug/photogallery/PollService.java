@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.LightingColorFilter;
 import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
@@ -30,10 +31,14 @@ public class PollService extends IntentService {
     }
 
     public static boolean isServiceAlarmOn(Context ctx){
-        Intent i = PollService.newIntent(ctx);
-        PendingIntent pi = PendingIntent.getService(ctx,0,i,PendingIntent.FLAG_NO_CREATE);
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            Intent i = PollService.newIntent(ctx);
+            PendingIntent pi = PendingIntent.getService(ctx, 0, i, PendingIntent.FLAG_NO_CREATE);
 
-        return pi != null;
+            return pi != null;
+        }else{
+            return PollJobService.isRun(ctx);
+        }
     }
 
     public PollService() {
@@ -47,13 +52,23 @@ public class PollService extends IntentService {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
 
         if(isOn){
-            am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME, // MODE
-                    SystemClock.elapsedRealtime(),                // Start Time
-                    POLL_INTERVAL,                                // Interval
-                    pi);                                          // Pending action(Intent)
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME, // MODE
+                        SystemClock.elapsedRealtime(),                // Start Time
+                        POLL_INTERVAL,                                // Interval
+                        pi);                                          // Pending action(Intent)
+                Log.d(TAG,"Run by Alarm Manager");
+            }else {
+                PollJobService.start(c);
+                Log.d(TAG,"Run by Scheduler");
+            }
         }else{
-            am.cancel(pi);
-            pi.cancel();
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                am.cancel(pi);
+                pi.cancel();
+            }else{
+                PollJobService.start(c);
+            }
         }
     }
 
@@ -102,6 +117,7 @@ public class PollService extends IntentService {
             notiBuilder.setContentTitle(res.getString(R.string.new_picture_title));
             notiBuilder.setContentText(res.getString(R.string.new_picure_content));
             notiBuilder.setContentIntent(pi);
+            notiBuilder.setContentInfo("Hello");
             notiBuilder.setAutoCancel(true);
 
             Notification notification = notiBuilder.build();

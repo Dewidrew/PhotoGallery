@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import java.io.IOException;
 
@@ -28,6 +29,8 @@ import ayp.aug.photogallery.PhotoGalleryFragment.PhotoHolder;
 public class ShowPictureDialog extends DialogFragment {
     private static final String TAG = "URL_PICTURE";
     private static final String SIZE = "b";
+    private LinearLayout layout;
+    private ViewGroup.LayoutParams imgParams;
 
     public static ShowPictureDialog newInstance(String url) {
 
@@ -48,10 +51,9 @@ public class ShowPictureDialog extends DialogFragment {
         if (dialog != null)
         {
             int width = ViewGroup.LayoutParams.MATCH_PARENT;
-            int height = ViewGroup.LayoutParams.MATCH_PARENT;
-            dialog.getWindow().setLayout(width, height);
+            int height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            //dialog.getWindow().setLayout(width, height);
         }
-
     }
 
     @Override
@@ -60,6 +62,7 @@ public class ShowPictureDialog extends DialogFragment {
         Log.d("NEW TAGE PHOTO",url);
         View v = LayoutInflater.from(getActivity()).inflate(R.layout.show_photo, null);
         img = (ImageView) v.findViewById(R.id.image_photo);
+        layout = (LinearLayout) v.findViewById(R.id.layout_dialog);
         new AsyncTask<String, Void ,Bitmap>(){
 
             @Override
@@ -80,6 +83,7 @@ public class ShowPictureDialog extends DialogFragment {
             protected void onPostExecute(Bitmap bitmap) {
                 super.onPostExecute(bitmap);
                 img.setImageBitmap(bitmap);
+                img.getLayoutParams().height= bitmap.getHeight() * 2;
             }
         }.execute(url);
 

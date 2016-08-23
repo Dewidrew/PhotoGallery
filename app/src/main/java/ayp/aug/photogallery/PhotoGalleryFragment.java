@@ -82,6 +82,11 @@ public class PhotoGalleryFragment extends Fragment {
                 PollService.setServiceAlarm(getActivity(),shouldStartAlarm);
                 getActivity().invalidateOptionsMenu(); //Refresh menu
                 return true;
+
+            case R.id.mnu_manual_check:
+                Intent pollIntent = PollService.newIntent(getActivity());
+                getActivity().startService(pollIntent);
+                return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -108,7 +113,6 @@ public class PhotoGalleryFragment extends Fragment {
 
         setHasOptionsMenu(true);
         setRetainInstance(true);
-
 
 
 
