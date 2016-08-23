@@ -12,6 +12,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -127,7 +128,7 @@ public class PhotoGalleryFragment extends Fragment {
                     mMemoryCache.put(url, thumbnail);
                 }
                 Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
-                target.bindDrawable(drawable);
+                target.bindDrawable(drawable,url);
             }
         };
 
@@ -217,17 +218,30 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    class PhotoHolder extends RecyclerView.ViewHolder {
+    class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
         TextView mText;
         ImageView mPhoto;
+        String url;
 
         public PhotoHolder(View itemView) {
             super(itemView);
             mPhoto = (ImageView) itemView.findViewById(R.id.image_photo);
         }
 
-        public void bindDrawable(@NonNull Drawable drawable) {
+        public void bindDrawable(@NonNull Drawable drawable, final String url) {
+            this.url = url;
             mPhoto.setImageDrawable(drawable);
+            mPhoto.setOnClickListener(this);
+
+        }
+
+        @Override
+        public void onClick(View view) {
+            FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+            ShowPictureDialog showPictureDialog = ShowPictureDialog.newInstance(url);
+            showPictureDialog.show(fragmentManager,"Show Picture");
+            Log.d(TAG,"Photo Url: " +url);
+
         }
     }
 
@@ -250,10 +264,10 @@ public class PhotoGalleryFragment extends Fragment {
             Drawable smileyDrawable =
                     ResourcesCompat.getDrawable(getResources(), R.drawable.loading_image, null);
             GalleryItem galleryItem = mGalleryItemList.get(position);
-            holder.bindDrawable(smileyDrawable);
+            holder.bindDrawable(smileyDrawable,galleryItem.getUrl());
             if (mMemoryCache.get(galleryItem.getUrl()) != null) {
                 Bitmap bitmap = mMemoryCache.get(galleryItem.getUrl());
-                holder.bindDrawable(new BitmapDrawable(getResources(), bitmap));
+                holder.bindDrawable(new BitmapDrawable(getResources(), bitmap),galleryItem.getUrl());
             } else {
 
                 mThumbnailDownloaderThread.queueThumbnailDownload(holder, galleryItem.getUrl());
