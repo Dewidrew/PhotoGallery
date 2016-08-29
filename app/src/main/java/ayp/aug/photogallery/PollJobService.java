@@ -1,6 +1,7 @@
 package ayp.aug.photogallery;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.job.JobInfo;
@@ -122,15 +123,27 @@ public class PollJobService extends JobService {
                 notiBuilder.setAutoCancel(true);
 
                 Notification notification = notiBuilder.build();
-                NotificationManagerCompat nm = NotificationManagerCompat.from(PollJobService.this);
-                nm.notify(0,notification);
+//                NotificationManagerCompat nm = NotificationManagerCompat.from(PollJobService.this);
+//                nm.notify(0,notification);
 
                 new Screen().on(PollJobService.this);
+                sendBackgroundNotification(0,notification);
             }
 
             // Finish
             jobFinished(params[0],false);
             return null;
         }
+    }
+    private void sendBackgroundNotification(int requestCode, Notification notification){
+        Intent intent = new Intent(PollService.ACTION_SHOW_NOTIFICATION);
+        intent.putExtra(PollService.REQUEST_CODE,requestCode);
+        intent.putExtra(PollService.NOTIFICATION,notification);
+
+        sendOrderedBroadcast(intent,PollService.PERMISSION_SHOW_NOTIF,
+                null,null,
+                Activity.RESULT_OK,
+                null,null);
+
     }
 }

@@ -1,5 +1,7 @@
 package ayp.aug.photogallery;
 
+import android.net.Uri;
+
 /**
  * Created by Hattapong on 8/16/2016.
  */
@@ -7,6 +9,7 @@ public class GalleryItem {
     private String mId;
     private String mTitle;
     private String mUrl;
+    private String owner;
 
     public String getTitle() {
         return mTitle;
@@ -47,5 +50,21 @@ public class GalleryItem {
             return that.mId.equals(mId) && that.mId != null && mId != null;
         }
         return false;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    private static final String PHOTO_URL_PREFIX = "http://www.flickr.com/photos/";
+    public Uri getPhotoUri(){
+        return Uri.parse(PHOTO_URL_PREFIX).buildUpon()
+                .appendPath(owner)
+                .appendPath(mId)
+                .build();
     }
 }

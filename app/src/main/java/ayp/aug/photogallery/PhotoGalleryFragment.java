@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -19,6 +20,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.util.LruCache;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -27,6 +29,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +37,7 @@ import java.util.List;
 /**
  * Created by Hattapong on 8/16/2016.
  */
-public class PhotoGalleryFragment extends Fragment {
+public class PhotoGalleryFragment extends VisibleFragment {
     private static final String TAG = "PhotoGalleryFragment";
 
     public static PhotoGalleryFragment newInstance() {
@@ -77,7 +80,7 @@ public class PhotoGalleryFragment extends Fragment {
                 return true;
 
             case R.id.mnu_toggle_pollling:
-                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                boolean shouldStartAlarm = !PhotoGalleryPreference.getStoredIsAlarmOn(getActivity());
                 Log.d(TAG,((shouldStartAlarm) ? "Start":"Stop") + " Intent service");
                 PollService.setServiceAlarm(getActivity(),shouldStartAlarm);
                 getActivity().invalidateOptionsMenu(); //Refresh menu
@@ -152,6 +155,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         final MenuItem menuItem = menu.findItem(R.id.mnu_search);
         final SearchView searchView = (SearchView) menuItem.getActionView();
+        searchView.setQuery(mSearchKey,false);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
 
             @Override
@@ -165,12 +169,7 @@ public class PhotoGalleryFragment extends Fragment {
             @Override
             public boolean onQueryTextChange(String newText) {
                 Log.d(TAG, "Query text changing: " + newText);
-                if (newText.equals("")){
-                    loadPhotos();
-                }else {
-                    loadPhotos();
-                }
-                return true;
+                return false;
             }
         });
         searchView.setOnClickListener(new View.OnClickListener() {
@@ -180,8 +179,15 @@ public class PhotoGalleryFragment extends Fragment {
             }
 
         });
+        searchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                searchView.setQuery(mSearchKey,false);
+            }
+        });
         MenuItem mnuPolling = menu.findItem(R.id.mnu_toggle_pollling);
-        if(PollService.isServiceAlarmOn(getActivity())){
+        Log.d(TAG,"Boolean : " + PhotoGalleryPreference.getStoredIsAlarmOn(getActivity()));
+        if(PhotoGalleryPreference.getStoredIsAlarmOn(getActivity())){
             mnuPolling.setTitle(R.string.stop_polling);
         }else{
             mnuPolling.setTitle(R.string.start_polling);
@@ -222,14 +228,19 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
-        TextView mText;
+    class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnCreateContextMenuListener, MenuItem.OnMenuItemClickListener {
         ImageView mPhoto;
         String url;
+        GalleryItem mGalleryItem;
 
         public PhotoHolder(View itemView) {
             super(itemView);
             mPhoto = (ImageView) itemView.findViewById(R.id.image_photo);
+            itemView.setOnCreateContextMenuListener(this);
+        }
+
+        public void bindGalleryItem(GalleryItem galleryItem){
+            mGalleryItem = galleryItem;
         }
 
         public void bindDrawable(@NonNull Drawable drawable, final String url) {
@@ -246,6 +257,20 @@ public class PhotoGalleryFragment extends Fragment {
             showPictureDialog.show(fragmentManager,"Show Picture");
             Log.d(TAG,"Photo Url: " +url);
 
+        }
+
+        @Override
+        public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+            MenuItem menuItem = menu.add(R.string.open_with_external_broswer);
+            menu.setHeaderTitle(url);
+            menuItem.setOnMenuItemClickListener(this);
+        }
+
+        @Override
+        public boolean onMenuItemClick(MenuItem item) {
+            Intent i = new Intent(Intent.ACTION_VIEW,mGalleryItem.getPhotoUri());
+            startActivity(i); // call external broswer by implicit intent
+            return true;
         }
     }
 
@@ -268,6 +293,7 @@ public class PhotoGalleryFragment extends Fragment {
             Drawable smileyDrawable =
                     ResourcesCompat.getDrawable(getResources(), R.drawable.loading_image, null);
             GalleryItem galleryItem = mGalleryItemList.get(position);
+            holder.bindGalleryItem(galleryItem);
             holder.bindDrawable(smileyDrawable,galleryItem.getUrl());
             if (mMemoryCache.get(galleryItem.getUrl()) != null) {
                 Bitmap bitmap = mMemoryCache.get(galleryItem.getUrl());

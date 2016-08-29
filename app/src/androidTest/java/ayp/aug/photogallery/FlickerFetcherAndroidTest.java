@@ -14,6 +14,7 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -56,5 +57,6 @@ public class FlickerFetcherAndroidTest {
         mFlickrFetcher.getRecentPhotos(galleryItemsList);
         Log.d(TAG,"test Search: size = " + galleryItemsList.size());
         assertThat(galleryItemsList.size(),not(0));
+        assertThat(galleryItemsList.get(0).getOwner(),notNullValue());
     }
 }
