@@ -15,4 +15,5 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="open_by_url">Open by URL</string>
     <string name="open_with_external_broswer">Open with external broswer</string>
+    <string name="open_in_app_browser">Open in App Browser</string>
 </resources>

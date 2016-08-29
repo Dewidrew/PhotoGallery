@@ -261,16 +261,28 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
         @Override
         public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-            MenuItem menuItem = menu.add(R.string.open_with_external_broswer);
             menu.setHeaderTitle(url);
-            menuItem.setOnMenuItemClickListener(this);
+            MenuItem menuItem1 = menu.add(0,1,0,R.string.open_with_external_broswer);
+            menuItem1.setOnMenuItemClickListener(this);
+            MenuItem menuItem2 = menu.add(0,2,0,R.string.open_in_app_browser);
+            menuItem2.setOnMenuItemClickListener(this);
+
         }
 
         @Override
         public boolean onMenuItemClick(MenuItem item) {
-            Intent i = new Intent(Intent.ACTION_VIEW,mGalleryItem.getPhotoUri());
-            startActivity(i); // call external broswer by implicit intent
-            return true;
+            switch (item.getItemId()){
+                case 1:
+                    Intent i = new Intent(Intent.ACTION_VIEW,mGalleryItem.getPhotoUri());
+                    startActivity(i); // call external broswer by implicit intent
+                    return  true;
+                case 2:
+                    startActivity(PhotoPageActivity.newIntent(getActivity(),mGalleryItem.getPhotoUri())); // Open in app browser
+                    return true;
+                default:
+
+            }
+            return false;
         }
     }
 

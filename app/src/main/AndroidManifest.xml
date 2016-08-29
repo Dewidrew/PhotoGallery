@@ -25,6 +25,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".PhotoPageActivity"
+            android:label="@string/open_in_app_browser"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:parentActivityName=".PhotoGalleryActivity"></activity>
+
         <!-- Poll Service -->
         <service android:name=".PollService" />
         <service
@@ -51,6 +56,7 @@
             </intent-filter>
 
         </receiver>
+
     </application>
 
 </manifest>
