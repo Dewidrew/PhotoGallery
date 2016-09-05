@@ -1,5 +1,6 @@
 package ayp.aug.photogallery;
 
+import android.location.Location;
 import android.net.Uri;
 import android.util.Log;
 
@@ -24,6 +25,7 @@ public class FlickerFetcher {
 
     /**
      * get <b>data</b> from web service(<b>urlSpec</b>)
+     *
      * @param urlSpec url target(<b>String</b>)
      * @return data (<b>bytes</b>)
      * @throws IOException
@@ -53,6 +55,7 @@ public class FlickerFetcher {
 
     /**
      * transfer bytes to String
+     *
      * @param urlSpec url target(<b>String</b>)
      * @return data(<b>String</b>)
      * @throws IOException
@@ -71,12 +74,13 @@ public class FlickerFetcher {
 
     /**
      * build <b>URL</b> and add parameter
+     *
      * @param method kind of search <b>getPhotos</b> or <b>search</b>
-     * @param param parameter of <b>URL</b>
+     * @param param  parameter of <b>URL</b>
      * @return URL (<b>String</b>)
      * @throws IOException
      */
-    private String buildUri(String method,String ... param) throws IOException {
+    private String buildUri(String method, String... param) throws IOException {
         Uri baseUrl = Uri.parse(FLICK_URL);
         Uri.Builder builder = baseUrl.buildUpon();
         builder.appendQueryParameter("method", method);
@@ -85,26 +89,33 @@ public class FlickerFetcher {
         builder.appendQueryParameter("nojsoncallback", "1");
         builder.appendQueryParameter("extras", "url_s");
         //equals without case (insensitive).
-        if(METHOD_SEARCH.equalsIgnoreCase(method)){
-            builder.appendQueryParameter("text",param[0]);
+        if (METHOD_SEARCH.equalsIgnoreCase(method)) {
+            builder.appendQueryParameter("text", param[0]);
+        }
+
+        if(param.length > 1){
+            //Lat % Long]
+            builder.appendQueryParameter("lat",param[1]);
+            builder.appendQueryParameter("lon",param[2]);
         }
 
         Uri completeUrl = builder.build();
         String url = completeUrl.toString();
 
-        Log.i(TAG,"Run URL: "+ url);
+        Log.i(TAG, "Run URL: " + url);
 
         return url;
     }
 
     /**
      * Query <b>data</b> from URL
+     *
      * @param url url target
      * @return data (<b>String</b>)
      * @throws IOException
      */
-    private String queryItem(String url) throws IOException{
-        Log.i(TAG,"Run URL: "+ url);
+    private String queryItem(String url) throws IOException {
+        Log.i(TAG, "Run URL: " + url);
         String jsonString = getUrlString(url);
         Log.i(TAG, "Receive JSON " + jsonString);
 
@@ -113,16 +124,26 @@ public class FlickerFetcher {
 
     /**
      * Search photo then put into <b>items</b>
+     *
      * @param items array target
-     * @param key to search
+     * @param key   to search
      */
-    public void searchPhotos(List<GalleryItem> items,String key) {
+    public void searchPhotos(List<GalleryItem> items, String key) {
         try {
-            String url = buildUri(METHOD_SEARCH,key);
-            String jsonStr = queryItem(url);
-            if (jsonStr != null) {
-                parseJSON(items, jsonStr);
-            }
+            String url = buildUri(METHOD_SEARCH, key);
+            fetchPhoto(items, url);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(TAG, "Failed to fetchItems ", e);
+        }
+    }
+
+    public void searchPhotos(List<GalleryItem> items, String key, String lat,String lon) {
+        try {
+            String url = buildUri(METHOD_SEARCH, key,
+                   lat,
+                    lon);
+            fetchPhoto(items,url);
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "Failed to fetchItems ", e);
@@ -131,25 +152,33 @@ public class FlickerFetcher {
 
     /**
      * call method that get <b>RecentPhoto</b> in list
+     *
      * @param items target list
      */
     public void getRecentPhotos(List<GalleryItem> items) {
         try {
             String url = buildUri(METHOD_GET_RECENT);
-            String jsonStr = queryItem(url);
-            if (jsonStr != null) {
-                parseJSON(items, jsonStr);
-            }
+            fetchPhoto(items, url);
         } catch (Exception e) {
             e.printStackTrace();
-            Log.e(TAG, "Failed to fetchItems ", e);
+            Log.e(TAG, "Failed to fetch items", e);
         }
+
+    }
+
+    public void fetchPhoto(List<GalleryItem> items, String url) throws IOException, JSONException {
+        String jsonStr = queryItem(url);
+        if (jsonStr != null) {
+            parseJSON(items, jsonStr);
+        }
+
     }
 
     /**
      * add Photo from URL target in List
+     *
      * @param newGalleryItemList target List
-     * @param jsonBodyStr URL target
+     * @param jsonBodyStr        URL target
      * @throws IOException
      * @throws JSONException
      */

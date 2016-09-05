@@ -10,6 +10,24 @@ public class GalleryItem {
     private String mTitle;
     private String mUrl;
     private String owner;
+    private String mLat;
+    private String mLong;
+
+    public String getLat() {
+        return mLat;
+    }
+
+    public void setLat(String mLat) {
+        this.mLat = mLat;
+    }
+
+    public String getLong() {
+        return mLong;
+    }
+
+    public void setLong(String mLong) {
+        this.mLong = mLong;
+    }
 
     public String getTitle() {
         return mTitle;

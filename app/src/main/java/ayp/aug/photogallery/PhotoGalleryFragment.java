@@ -1,9 +1,14 @@
 package ayp.aug.photogallery;
 
+import android.*;
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,6 +19,7 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -31,14 +37,26 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
+import java.net.Inet4Address;
 import java.util.ArrayList;
 import java.util.List;
+
+import ayp.aug.photogallery.map.PhotoMapActivity;
+import ayp.aug.photogallery.settings.SettingActivity;
 
 /**
  * Created by Hattapong on 8/16/2016.
  */
 public class PhotoGalleryFragment extends VisibleFragment {
     private static final String TAG = "PhotoGalleryFragment";
+    private static final int REQUEST_PERMISSION_LOCATION = 21321;
 
     public static PhotoGalleryFragment newInstance() {
         Bundle args = new Bundle();
@@ -48,6 +66,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
         return fragment;
     }
 
+    private Boolean mUseGPS;
     private RecyclerView mRecyclerView;
     private String mSearchKey;
     private PhotoGalleryAdapter mAdapter;
@@ -55,9 +74,47 @@ public class PhotoGalleryFragment extends VisibleFragment {
     private FetcherTask mFetcherTask;
     private List<GalleryItem> mItem;
     private LruCache<String, Bitmap> mMemoryCache;
+    private Location mLocation;
     final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
 
+    private GoogleApiClient mGoogleApiClient;
+    private GoogleApiClient.ConnectionCallbacks mConnectionCallbacks =
+            new GoogleApiClient.ConnectionCallbacks() {
+                @Override
+                public void onConnected(@Nullable Bundle bundle) {
+                    Log.i(TAG, "Google API Connected");
+                    if (mUseGPS) {
+                        findLocation();
+                    }
+                }
+
+                @Override
+                public void onConnectionSuspended(int i) {
+                    Log.i(TAG, "Google API Suspended");
+                }
+            };
+
+    private LocationListener mLocationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            mLocation = location;
+            Toast.makeText(getActivity(), location.getLatitude() + "," + location.getLongitude(),
+                    Toast.LENGTH_LONG).show();
+        }
+    };
     final int cacheSize = maxMemory / 8;
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mGoogleApiClient.disconnect();
+    }
 
     @Override
     public void onDestroy() {
@@ -81,14 +138,19 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
             case R.id.mnu_toggle_pollling:
                 boolean shouldStartAlarm = !PhotoGalleryPreference.getStoredIsAlarmOn(getActivity());
-                Log.d(TAG,((shouldStartAlarm) ? "Start":"Stop") + " Intent service");
-                PollService.setServiceAlarm(getActivity(),shouldStartAlarm);
+                Log.d(TAG, ((shouldStartAlarm) ? "Start" : "Stop") + " Intent service");
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
                 getActivity().invalidateOptionsMenu(); //Refresh menu
                 return true;
 
             case R.id.mnu_manual_check:
                 Intent pollIntent = PollService.newIntent(getActivity());
                 getActivity().startService(pollIntent);
+                return true;
+
+            case R.id.mnu_setting:
+                Intent i = SettingActivity.newIntent(getActivity());
+                startActivity(i);
                 return true;
         }
         return super.onOptionsItemSelected(item);
@@ -97,16 +159,81 @@ public class PhotoGalleryFragment extends VisibleFragment {
     @Override
     public void onPause() {
         super.onPause();
-        PhotoGalleryPreference.setStoredSearchKey(getActivity(),mSearchKey);
+        PhotoGalleryPreference.setStoredSearchKey(getActivity(), mSearchKey);
+        unFindLocation();
     }
 
     @Override
     public void onResume() {
         super.onResume();
         String searchKey = PhotoGalleryPreference.getStoredSearchKey(getActivity());
-        if(searchKey != null){
+        if (searchKey != null) {
             mSearchKey = searchKey;
             loadPhotos();
+        }
+        mUseGPS = PhotoGalleryPreference.getUseGPS(getActivity());
+
+
+    }
+
+    private void findLocation() {
+        if (hasPermission()) {
+            requestLocation();
+        }
+    }
+
+    private boolean hasPermission() {
+        int permissionStatus =
+                ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION);
+
+        // Permission is already allow
+        if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
+            return true;
+
+        }
+
+        // Permission still not allow
+        // Send request Permission to user
+        requestPermissions(
+                new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                }, REQUEST_PERMISSION_LOCATION);
+
+        return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == REQUEST_PERMISSION_LOCATION) {
+            //User click 'Allow'
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                requestLocation();
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    private void requestLocation() {
+        if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(getActivity()) == ConnectionResult.SUCCESS) {
+
+
+            LocationRequest request = LocationRequest.create();
+
+            request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            request.setNumUpdates(50);
+            request.setInterval(1000);
+
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, request,
+                    // Need to  @SuppressWarnings("all")
+                    mLocationListener);
+        }
+    }
+
+    private void unFindLocation() {
+        if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(getActivity()) == ConnectionResult.SUCCESS) {
+
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, mLocationListener);
         }
     }
 
@@ -117,6 +244,8 @@ public class PhotoGalleryFragment extends VisibleFragment {
         setHasOptionsMenu(true);
         setRetainInstance(true);
 
+        mUseGPS = PhotoGalleryPreference.getUseGPS(getActivity());
+        mSearchKey = PhotoGalleryPreference.getStoredSearchKey(getActivity());
 
 
         mMemoryCache = new LruCache<String, Bitmap>(cacheSize) {
@@ -135,7 +264,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
                     mMemoryCache.put(url, thumbnail);
                 }
                 Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
-                target.bindDrawable(drawable,url);
+                target.bindDrawable(drawable, url);
             }
         };
 
@@ -146,6 +275,12 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
         Log.i(TAG, "Start background thread");
 
+        mGoogleApiClient = new GoogleApiClient.Builder(getActivity())
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(mConnectionCallbacks)
+                .build();
+
+
     }
 
     @Override
@@ -155,7 +290,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
         final MenuItem menuItem = menu.findItem(R.id.mnu_search);
         final SearchView searchView = (SearchView) menuItem.getActionView();
-        searchView.setQuery(mSearchKey,false);
+        searchView.setQuery(mSearchKey, false);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
 
             @Override
@@ -175,21 +310,21 @@ public class PhotoGalleryFragment extends VisibleFragment {
         searchView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                searchView.setQuery(mSearchKey,false);
+                searchView.setQuery(mSearchKey, false);
             }
 
         });
         searchView.setOnSearchClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                searchView.setQuery(mSearchKey,false);
+                searchView.setQuery(mSearchKey, false);
             }
         });
         MenuItem mnuPolling = menu.findItem(R.id.mnu_toggle_pollling);
-        Log.d(TAG,"Boolean : " + PhotoGalleryPreference.getStoredIsAlarmOn(getActivity()));
-        if(PhotoGalleryPreference.getStoredIsAlarmOn(getActivity())){
+        Log.d(TAG, "Boolean : " + PhotoGalleryPreference.getStoredIsAlarmOn(getActivity()));
+        if (PhotoGalleryPreference.getStoredIsAlarmOn(getActivity())) {
             mnuPolling.setTitle(R.string.stop_polling);
-        }else{
+        } else {
             mnuPolling.setTitle(R.string.start_polling);
         }
     }
@@ -222,7 +357,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
             mFetcherTask = new FetcherTask();
             if (mSearchKey != null) {
                 mFetcherTask.execute(mSearchKey);
-            }else {
+            } else {
                 mFetcherTask.execute();
             }
         }
@@ -239,7 +374,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
             itemView.setOnCreateContextMenuListener(this);
         }
 
-        public void bindGalleryItem(GalleryItem galleryItem){
+        public void bindGalleryItem(GalleryItem galleryItem) {
             mGalleryItem = galleryItem;
         }
 
@@ -254,30 +389,42 @@ public class PhotoGalleryFragment extends VisibleFragment {
         public void onClick(View view) {
             FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
             ShowPictureDialog showPictureDialog = ShowPictureDialog.newInstance(url);
-            showPictureDialog.show(fragmentManager,"Show Picture");
-            Log.d(TAG,"Photo Url: " +url);
+            showPictureDialog.show(fragmentManager, "Show Picture");
+            Log.d(TAG, "Photo Url: " + url);
 
         }
 
         @Override
         public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
             menu.setHeaderTitle(url);
-            MenuItem menuItem1 = menu.add(0,1,0,R.string.open_with_external_broswer);
+            MenuItem menuItem1 = menu.add(0, 1, 0, R.string.open_with_external_broswer);
             menuItem1.setOnMenuItemClickListener(this);
-            MenuItem menuItem2 = menu.add(0,2,0,R.string.open_in_app_browser);
+            MenuItem menuItem2 = menu.add(0, 2, 0, R.string.open_in_app_browser);
             menuItem2.setOnMenuItemClickListener(this);
+            MenuItem menuItem3 = menu.add(0, 3, 0, R.string.open_in_map);
+            menuItem3.setOnMenuItemClickListener(this);
 
         }
 
         @Override
         public boolean onMenuItemClick(MenuItem item) {
-            switch (item.getItemId()){
+            switch (item.getItemId()) {
                 case 1:
-                    Intent i = new Intent(Intent.ACTION_VIEW,mGalleryItem.getPhotoUri());
+                    Intent i = new Intent(Intent.ACTION_VIEW, mGalleryItem.getPhotoUri());
                     startActivity(i); // call external broswer by implicit intent
-                    return  true;
+                    return true;
                 case 2:
-                    startActivity(PhotoPageActivity.newIntent(getActivity(),mGalleryItem.getPhotoUri())); // Open in app browser
+                    startActivity(PhotoPageActivity.newIntent(getActivity(), mGalleryItem.getPhotoUri())); // Open in app browser
+                    return true;
+                case 3:
+                    Location itemLoc = new Location("");
+                    itemLoc.setLatitude(Double.valueOf(mGalleryItem.getLat()));
+                    itemLoc.setLongitude(Double.valueOf(mGalleryItem.getLong()));
+
+
+
+                    Intent i3 = PhotoMapActivity.newIntent(getActivity(),mLocation,null,null);
+                    startActivity(i3);
                     return true;
                 default:
 
@@ -306,10 +453,10 @@ public class PhotoGalleryFragment extends VisibleFragment {
                     ResourcesCompat.getDrawable(getResources(), R.drawable.loading_image, null);
             GalleryItem galleryItem = mGalleryItemList.get(position);
             holder.bindGalleryItem(galleryItem);
-            holder.bindDrawable(smileyDrawable,galleryItem.getUrl());
+            holder.bindDrawable(smileyDrawable, galleryItem.getUrl());
             if (mMemoryCache.get(galleryItem.getUrl()) != null) {
                 Bitmap bitmap = mMemoryCache.get(galleryItem.getUrl());
-                holder.bindDrawable(new BitmapDrawable(getResources(), bitmap),galleryItem.getUrl());
+                holder.bindDrawable(new BitmapDrawable(getResources(), bitmap), galleryItem.getUrl());
             } else {
 
                 mThumbnailDownloaderThread.queueThumbnailDownload(holder, galleryItem.getUrl());
@@ -338,9 +485,14 @@ public class PhotoGalleryFragment extends VisibleFragment {
                 List<GalleryItem> itemList = new ArrayList<>();
                 //mFlickerFetcher.getRecentPhotos(itemList);
                 FlickerFetcher flickrFetcher = new FlickerFetcher();
-                if(params.length > 0){
-                    flickrFetcher.searchPhotos(itemList,params[0]);
-                }else {
+                if (params.length > 0) {
+                    if (mUseGPS && mLocation != null) {
+                        flickrFetcher.searchPhotos(itemList, params[0],
+                                String.valueOf(mLocation.getLatitude()),String.valueOf(mLocation.getLongitude()));
+                    } else {
+                        flickrFetcher.searchPhotos(itemList, params[0]);
+                    }
+                } else {
                     flickrFetcher.getRecentPhotos(itemList);
                 }
 

@@ -27,4 +27,8 @@
         android:title="@string/mnu_manual_check"
         app:showAsAction="never"/>
 
+    <item android:id="@+id/mnu_setting"
+        android:title="@string/photo_setting"
+        app:showAsAction="never"/>
+
 </menu>

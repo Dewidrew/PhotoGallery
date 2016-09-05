@@ -12,12 +12,23 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="ayp.aug.photogallery.RECEIVE_SHOW_NOTIFICATION" />
 
+    <!--Location-->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
+    <!--Maps-->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/logo"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <meta-data android:name="com.google.android.maps.v2.API_KEY"
+            android:value="AIzaSyBvA4UuLji99KtkfUMFuyhxIQEP6r2VY2U"/>
         <activity android:name=".PhotoGalleryActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -29,6 +40,19 @@
             android:label="@string/open_in_app_browser"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:parentActivityName=".PhotoGalleryActivity"></activity>
+
+        <!--Setting-->
+        <activity android:name=".settings.SettingActivity"
+            android:label="@string/photo_setting"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:parentActivityName=".PhotoGalleryActivity"></activity>
+
+        <!--Map-->
+        <activity android:name=".map.PhotoMapActivity"
+            android:label="@string/photo_map"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:parentActivityName=".PhotoGalleryActivity"></activity>
+
 
         <!-- Poll Service -->
         <service android:name=".PollService" />
