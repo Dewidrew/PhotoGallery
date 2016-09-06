@@ -85,4 +85,8 @@ public class GalleryItem {
                 .appendPath(mId)
                 .build();
     }
+
+    public boolean isGeoCorrect(){
+        return !("0".equals(mLat) && "0".equals(mLong));
+    }
 }
