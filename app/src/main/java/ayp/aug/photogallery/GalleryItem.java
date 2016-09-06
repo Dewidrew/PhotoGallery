@@ -12,6 +12,15 @@ public class GalleryItem {
     private String owner;
     private String mLat;
     private String mLong;
+    private String bigUrl;
+
+    public String getBigUrl() {
+        return bigUrl;
+    }
+
+    public void setBigUrl(String bigUrl) {
+        this.bigUrl = bigUrl;
+    }
 
     public String getLat() {
         return mLat;

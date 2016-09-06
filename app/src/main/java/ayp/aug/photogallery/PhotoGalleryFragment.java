@@ -31,6 +31,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -385,6 +386,10 @@ public class PhotoGalleryFragment extends VisibleFragment {
         String url;
         GalleryItem mGalleryItem;
 
+        public ImageView getmPhoto() {
+            return mPhoto;
+        }
+
         public PhotoHolder(View itemView) {
             super(itemView);
             mPhoto = (ImageView) itemView.findViewById(R.id.image_photo);
@@ -472,15 +477,16 @@ public class PhotoGalleryFragment extends VisibleFragment {
                     ResourcesCompat.getDrawable(getResources(), R.drawable.loading_image, null);
             GalleryItem galleryItem = mGalleryItemList.get(position);
             holder.bindGalleryItem(galleryItem);
-            holder.bindDrawable(smileyDrawable, galleryItem.getUrl());
-            if (mMemoryCache.get(galleryItem.getUrl()) != null) {
-                Bitmap bitmap = mMemoryCache.get(galleryItem.getUrl());
-                holder.bindDrawable(new BitmapDrawable(getResources(), bitmap), galleryItem.getUrl());
-            } else {
+            holder.bindDrawable(smileyDrawable, galleryItem.getBigUrl());
+//            if (mMemoryCache.get(galleryItem.getUrl()) != null) {
+//                Bitmap bitmap = mMemoryCache.get(galleryItem.getUrl());
+//                holder.bindDrawable(new BitmapDrawable(getResources(), bitmap), galleryItem.getUrl());
+//            } else {
+//
+//                mThumbnailDownloaderThread.queueThumbnailDownload(holder, galleryItem.getUrl());
+//            }
 
-                mThumbnailDownloaderThread.queueThumbnailDownload(holder, galleryItem.getUrl());
-            }
-
+            Glide.with(getActivity()).load(galleryItem.getUrl()).into(holder.getmPhoto());
 
         }
 
@@ -491,7 +497,6 @@ public class PhotoGalleryFragment extends VisibleFragment {
     }
 
     class FetcherTask extends AsyncTask<String, Void, List<GalleryItem>> {
-        boolean running = false;
 
 
         @Override

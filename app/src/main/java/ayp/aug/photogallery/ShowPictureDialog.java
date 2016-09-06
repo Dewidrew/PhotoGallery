@@ -17,6 +17,10 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
+
 import java.io.IOException;
 
 import ayp.aug.photogallery.PhotoGalleryFragment.PhotoHolder;
@@ -48,8 +52,7 @@ public class ShowPictureDialog extends DialogFragment {
     public void onStart() {
         super.onStart();
         Dialog dialog = getDialog();
-        if (dialog != null)
-        {
+        if (dialog != null) {
             int width = ViewGroup.LayoutParams.MATCH_PARENT;
             int height = ViewGroup.LayoutParams.WRAP_CONTENT;
             //dialog.getWindow().setLayout(width, height);
@@ -59,36 +62,43 @@ public class ShowPictureDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         url = transferUrl(getArguments().getString(TAG, null));
-        Log.d("NEW TAGE PHOTO",url);
+        Log.d("NEW TAGE PHOTO", url);
         View v = LayoutInflater.from(getActivity()).inflate(R.layout.show_photo, null);
         img = (ImageView) v.findViewById(R.id.image_photo);
         layout = (LinearLayout) v.findViewById(R.id.layout_dialog);
-        new AsyncTask<String, Void ,Bitmap>(){
+//        new AsyncTask<String, Void ,Bitmap>(){
+//
+//            @Override
+//            protected Bitmap doInBackground(String... strings) {
+//                FlickerFetcher flickerFetcher = new FlickerFetcher();
+//                Bitmap bm = null;
+//                try{
+//                    byte[] bitMapBytes = flickerFetcher.getUrlBytes(url);
+//                    bm = BitmapFactory.decodeByteArray(bitMapBytes,0,bitMapBytes.length);
+//
+//                }catch (IOException e){
+//                    e.printStackTrace();
+//                }
+//                return bm;
+//            }
+//
+//            @Override
+//            protected void onPostExecute(Bitmap bitmap) {
+//                super.onPostExecute(bitmap);
+//                img.setImageBitmap(bitmap);
+//                img.getLayoutParams().height= bitmap.getHeight() * 2;
+//            }
+//        };
 
-            @Override
-            protected Bitmap doInBackground(String... strings) {
-                FlickerFetcher flickerFetcher = new FlickerFetcher();
-                Bitmap bm = null;
-                try{
-                    byte[] bitMapBytes = flickerFetcher.getUrlBytes(url);
-                    bm = BitmapFactory.decodeByteArray(bitMapBytes,0,bitMapBytes.length);
 
-                }catch (IOException e){
-                    e.printStackTrace();
-                }
-                return bm;
-            }
-
-            @Override
-            protected void onPostExecute(Bitmap bitmap) {
-                super.onPostExecute(bitmap);
-                img.setImageBitmap(bitmap);
-                img.getLayoutParams().height= bitmap.getHeight() * 2;
-            }
-        }.execute(url);
-
-
-
+        Glide.with(getActivity()).load(url)
+                .asBitmap()
+                .into(new SimpleTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                        img.setImageBitmap(resource);
+                    }
+                });
 
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -98,7 +108,6 @@ public class ShowPictureDialog extends DialogFragment {
 
         return builder.create();
     }
-
 
 
     private String transferUrl(String url) {

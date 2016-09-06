@@ -87,7 +87,7 @@ public class FlickerFetcher {
         builder.appendQueryParameter("api_key", API_KEY);
         builder.appendQueryParameter("format", "json");
         builder.appendQueryParameter("nojsoncallback", "1");
-        builder.appendQueryParameter("extras", "url_s,geo");
+        builder.appendQueryParameter("extras", "url_s,url_z,geo");
         //equals without case (insensitive).
         if (METHOD_SEARCH.equalsIgnoreCase(method)) {
             builder.appendQueryParameter("text", param[0]);
@@ -198,8 +198,12 @@ public class FlickerFetcher {
             if (!jsonPhotoItem.has("url_s")) {
                 continue;
             }
+            if (!jsonPhotoItem.has("url_z")) {
+                continue;
+            }
 
 
+            item.setBigUrl(jsonPhotoItem.getString("url_z"));
             item.setUrl(jsonPhotoItem.getString("url_s"));
             item.setLat(jsonPhotoItem.getString("latitude"));
             item.setLong(jsonPhotoItem.getString("longitude"));
